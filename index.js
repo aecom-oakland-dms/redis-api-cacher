@@ -83,7 +83,17 @@ class Client{
    * @return {[Promise]}     [Promise resolved to found value]
    */
   get(key){
-    return this.client.getAsync(key)
+    new Promise((resolve, reject)=>{
+      this.client.getAsync(key).then( data=>{
+        // parse the data back to JSON if it's a json object
+        try{
+          data = typeof data == 'string' ? /\{.+\}/.test(data) && JSON.parse(data) : data;
+        }catch(err){
+          console.log(`error trying to parse cached string back to JSON for key: ${key}, data: ${data}`, err)
+        }
+        resolve(data)
+      })
+    })
   }
 
   expire(key, ttl){
