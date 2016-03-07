@@ -1,0 +1,32 @@
+{
+  "name": "redis-api-cacher",
+  "version": "1.0.0",
+  "description": "Cache client for api - cache api responses in redis cache for faster responses of cached items",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bkane11/redis-api-cacher.git"
+  },
+  "keywords": [
+    "redis",
+    "node",
+    "es6",
+    "cache",
+    "api"
+  ],
+  "author": "Ben Kane",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bkane11/redis-api-cacher/issues"
+  },
+  "homepage": "https://github.com/bkane11/redis-api-cacher#readme",
+  "dependencies": {
+    "bluebird": "^3.3.4",
+    "lodash": "^4.6.1",
+    "redis": "^2.4.2",
+    "redis-delete-wildcard": "0.0.3"
+  }
+}
