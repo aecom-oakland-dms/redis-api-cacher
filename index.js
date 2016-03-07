@@ -83,7 +83,7 @@ class Client{
    * @return {[Promise]}     [Promise resolved to found value]
    */
   get(key){
-    new Promise((resolve, reject)=>{
+    return new Promise((resolve, reject)=>{
       this.client.getAsync(key).then( data=>{
         // parse the data back to JSON if it's a json object
         try{
