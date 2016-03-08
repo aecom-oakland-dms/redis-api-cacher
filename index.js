@@ -4,8 +4,8 @@ let redis = require('redis')
 , bluebird = require('bluebird')
 , _ = require('lodash')
 , defaultDBIndex = 1
+, defaultTTL = 60 * 60 // 1 hour
 ;
-
 
 // pass in redis so prototype can be extended with LUA script to delete by pattern
 require('redis-delete-wildcard')(redis);
@@ -15,15 +15,26 @@ bluebird.promisifyAll(redis.RedisClient.prototype);
 bluebird.promisifyAll(redis.Multi.prototype);
 
 class Client{
-  constructor(dbIndex){
-    this.client = redis.createClient(null, null, { detect_buffers: true , 'return_buffers': true});
+  /**
+   * [constructor description]
+   * @param  {[object]} options [
+   *  options object to instantiate the client with
+   *  @param {[integer]} db [ redis db to select ]
+   *  @param {[integer || false/null ]} ttl [ ttl value to expire after (in seconds).  null, false, and 0 will be interpreted as no expiration/ttl ]
+   * ]
+   * @return {[Client]}       
+   */
+  constructor(options){
+    this.client = redis.createClient(null, null, { detect_buffers: true });
+    // this.client = redis.createClient(null, null, { detect_buffers: true , 'return_buffers': true});
     this._keys = [];
-    this.setDB(dbIndex || defaultDBIndex)
+    this.ttl = typeof options.ttl !== 'undefined' ? options.ttl : defaultTTL
+    this.setDB(options.db || defaultDBIndex)
   }
 
-  setDB(dbIndex){
-    this._dbIndex = dbIndex
-    this.client.select(dbIndex, (err, msg)=>console.log(`\n\n cache_client is connected to ${this._dbIndex}. errors: ${err}.  messages: ${msg} \n\n` ))
+  setDB(db){
+    this._dbIndex = db
+    this.client.select(db, (err, msg)=>console.log(`\n\n cache_client is connected to ${this._dbIndex}. errors: ${err}.  messages: ${msg} \n\n` ))
     return this
   }
 
@@ -45,13 +56,16 @@ class Client{
     return this
   }
 
+  set ttl(ttl){
+    this._ttl = ttl
+  }
+
   get ttl(){
     // set the default ttl property to be used with
     // EXPIRE
     // http://redis.io/commands/expire
     // Set a key to expire after `n` seconds
-    return 60 * 60 // 1 hour
-    // return 1000 * 60 * 60 // 1 hour
+    return this._ttl
   }
 
   set(key, val, timeout){
@@ -59,7 +73,9 @@ class Client{
 
     let ttl = typeof timeout !== 'undefined' ? timeout : this.ttl;
 
-    this.expire(key, ttl);
+    // only set key to expire if Client has a ttl value set
+    if(this.ttl)
+      this.expire(key, ttl);
 
     // store the key
     // for easy deletion later
@@ -84,15 +100,29 @@ class Client{
    */
   get(key){
     return new Promise((resolve, reject)=>{
-      this.client.getAsync(key).then( data=>{
-        // parse the data back to JSON if it's a json object
-        try{
-          data = typeof data == 'string' ? /\{.+\}/.test(data) && JSON.parse(data) : data;
-        }catch(err){
-          console.log(`error trying to parse cached string back to JSON for key: ${key}, data: ${data}`, err)
-        }
-        resolve(data)
-      })
+      this.client.getAsync(key)
+        .catch(err=>{
+          console.log(err)
+          resolve()
+        })
+        .then( data=>{
+          // console.log(`data found with key: ${key} - ${data}`);
+          // console.log('typeof found data is:', typeof data);
+          // console.log('data is an Array:', data instanceof Array);
+
+          // parse the data back to JSON if it's a json object
+          // could either be the result of:
+          //  JSON.stringify(Array) 
+          //  or 
+          //  JSON.stringify(Object) 
+          try{
+            data = typeof data == 'string' ? (/\{.+\}/.test(data) || /\[.+\]/.test(data)) ? JSON.parse(data) : data : data;
+          }catch(err){
+            console.log(`error trying to parse cached string back to JSON for key: ${key}, data: ${data}`, err)
+          }
+          // console.log('resolved', key)
+          resolve(data)
+        })
     })
   }
 
@@ -141,4 +171,4 @@ class Client{
 
 }
 
-module.exports  = new Client( defaultDBIndex );
+module.exports  = options => new Client( options ) 
