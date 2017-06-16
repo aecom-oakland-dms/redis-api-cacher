@@ -24,7 +24,7 @@ class Client{
    * ]
    * @return {[Client]}       
    */
-  constructor(options){
+  constructor(options={}){
     this.client = redis.createClient(null, null, { detect_buffers: true });
     // this.client = redis.createClient(null, null, { detect_buffers: true , 'return_buffers': true});
     this._keys = [];
@@ -36,6 +36,16 @@ class Client{
     this._dbIndex = db
     this.client.select(db, (err, msg)=>console.log(`\n\n cache_client is connected to ${this._dbIndex}. errors: ${err}.  messages: ${msg} \n\n` ))
     return this
+  }
+
+  get dbKeys(){
+    return new Promise((resolve, reject)=>{
+      this.client.keys('*', (err,keys)=>{
+        if(err)
+          return reject(err)
+        return resolve(keys)
+      })
+    })
   }
 
   get cachedKeys(){
@@ -69,6 +79,9 @@ class Client{
   }
 
   set(key, val, timeout){
+    // if(typeof key !== 'string')
+    //   key = JSON.stringify(key)
+
     this.client.set(key, val);
 
     let ttl = typeof timeout !== 'undefined' ? timeout : this.ttl;
@@ -100,9 +113,12 @@ class Client{
    */
   get(key){
     return new Promise((resolve, reject)=>{
+      // if(typeof key !== 'string')
+      //   key = JSON.stringify(key);
+      // console.log('cache_client searching for:', key)
       this.client.getAsync(key)
         .catch(err=>{
-          console.log(err)
+          console.trace(err)
           resolve()
         })
         .then( data=>{
@@ -116,7 +132,12 @@ class Client{
           //  or 
           //  JSON.stringify(Object) 
           try{
-            data = typeof data == 'string' ? (/\{.+\}/.test(data) || /\[.+\]/.test(data)) ? JSON.parse(data) : data : data;
+            data = typeof data == 'string'
+              ? (/^[\[|\{](\s|.*|\w)*[\]|\}]$/.test(data))
+                ? JSON.parse(data)
+                : data
+              : data;
+            // data = typeof data == 'string' ? (/^\{.+\}$/.test(data) || /^\[.+\]$/.test(data)) ? JSON.parse(data) : data : data;
           }catch(err){
             console.log(`error trying to parse cached string back to JSON for key: ${key}, data: ${data}`, err)
           }
@@ -171,4 +192,4 @@ class Client{
 
 }
 
-module.exports  = options => new Client( options ) 
+module.exports = options => new Client( options ) 
