@@ -25,6 +25,7 @@ class Client{
    * @return {[Client]}       
    */
   constructor(options={}){
+    console.log('redis-api-cacher instantiated with options:', options);
     this.client = redis.createClient(null, null, { detect_buffers: true });
     // this.client = redis.createClient(null, null, { detect_buffers: true , 'return_buffers': true});
     this._keys = [];
@@ -192,4 +193,5 @@ class Client{
 
 }
 
-module.exports = options => new Client( options ) 
+// module.exports = options => new Client( options ) 
+module.exports = Client; 
